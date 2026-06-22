@@ -8,10 +8,12 @@ from backend.config import get_settings
 
 settings = get_settings()
 
-# Convert sync SQLite URL to async
+# Convert sync SQL URL to async
 def _make_async_url(url: str) -> str:
     if url.startswith("sqlite:///"):
         return url.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
+    if url.startswith("postgresql://") and "+" not in url:
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
     return url
 
 ASYNC_DATABASE_URL = _make_async_url(settings.DATABASE_URL)
