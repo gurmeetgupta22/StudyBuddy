@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyBuddy — OAuth Callback</title>
+  <link rel="stylesheet" href="../styles/main.css"/>
+  <style>
+    body { display:flex; align-items:center; justify-content:center; min-height:100vh; }
+    .callback-box { text-align:center; }
+    .callback-box .spinner { width:48px;height:48px;border-width:4px;margin:0 auto 1.5rem; }
+    .callback-box h2 { margin-bottom:0.5rem; }
+    .callback-box p { color:var(--text-muted); }
+  </style>
+</head>
+<body>
+<div class="callback-box fade-in">
+  <div class="spinner"></div>
+  <h2>Signing you in…</h2>
+  <p>Please wait while we set up your account.</p>
+</div>
+
+<script type="module">
+  import { setToken, setUser, api } from '../scripts/api.js';
+  import { showToast } from '../scripts/utils.js';
+  import { redirectTo } from '../scripts/routes.js';
+
+  (async () => {
+    const params = new URLSearchParams(window.location.search);
+    const token  = params.get('token');
+    const survey = params.get('survey');   // 'true' | 'false'
+
+    if (!token) {
+      document.querySelector('h2').textContent = 'Authentication failed';
+      document.querySelector('p').textContent  = 'Could not sign in. Please try again.';
+      setTimeout(() => redirectTo('index'), 3000);
+      return;
+    }
+
+    // Store token first
+    setToken(token);
+
+    // Fetch full user profile
+    try {
+      const user = await api.getMe();
+      setUser(user);
+
+      if (survey === 'false') {
+        redirectTo('survey');
+      } else {
+        redirectTo('dashboard');
+      }
+    } catch (err) {
+      document.querySelector('h2').textContent = 'Error';
+      document.querySelector('p').textContent  = err.message;
+    }
+  })();
+</script>
+</body>
+</html>

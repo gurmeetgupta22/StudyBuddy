@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyBuddy — History</title>
+  <link rel="stylesheet" href="../styles/main.css"/>
+  <style>
+    .filter-bar {
+      display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;
+      margin-bottom:1.5rem;
+    }
+    .filter-tab {
+      padding:0.5rem 1.1rem;
+      border-radius:var(--radius-full);
+      border:1px solid var(--border);
+      background:var(--bg-card);
+      color:var(--text-secondary);
+      font-size:0.85rem; font-weight:600;
+      cursor:pointer; transition:var(--transition);
+    }
+    .filter-tab:hover  { border-color:var(--primary); color:var(--primary-light); }
+    .filter-tab.active { background:rgba(212,135,74,0.2); border-color:var(--primary); color:var(--primary-light); }
+
+    .history-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1rem; }
+
+    .history-card {
+      background:var(--bg-card);
+      border:1px solid var(--border);
+      border-radius:var(--radius-lg);
+      padding:1.25rem;
+      transition:var(--transition);
+      display:flex; flex-direction:column; gap:0.75rem;
+    }
+    .history-card:hover { border-color:var(--primary); box-shadow:var(--shadow-glow); transform:translateY(-2px); }
+
+    .hc-top { display:flex; align-items:flex-start; gap:0.75rem; }
+    .hc-icon {
+      width:42px; height:42px; border-radius:var(--radius-sm);
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.2rem; flex-shrink:0;
+    }
+    .hc-title { font-size:0.95rem; font-weight:700; margin-bottom:2px; }
+    .hc-meta  { font-size:0.75rem; color:var(--text-muted); }
+
+    .hc-tags { display:flex; flex-wrap:wrap; gap:4px; }
+
+    .hc-actions { display:flex; gap:0.5rem; margin-top:auto; }
+
+    .search-box {
+      flex:1;
+      position:relative;
+    }
+    .search-box input { padding-left:2.2rem; }
+
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-placeholder"></div>
+
+  <main class="main-content fade-in">
+    <div class="page-header">
+      <div>
+        <h1>History</h1>
+        <p>All your past notes and tests in one place</p>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <button class="filter-tab active" data-type="all">All</button>
+      <button class="filter-tab" data-type="notes">Notes</button>
+      <button class="filter-tab" data-type="tests">Tests</button>
+      <button class="filter-tab" data-type="bookmarked">Bookmarked</button>
+      <div class="search-box">
+        <input type="text" id="search-input" class="form-input" placeholder="Search topics…"/>
+      </div>
+    </div>
+
+    <!-- History Grid -->
+    <div class="history-grid" id="history-grid">
+      <div class="skeleton" style="height:160px;border-radius:16px;"></div>
+      <div class="skeleton" style="height:160px;border-radius:16px;"></div>
+      <div class="skeleton" style="height:160px;border-radius:16px;"></div>
+      <div class="skeleton" style="height:160px;border-radius:16px;"></div>
+      <div class="skeleton" style="height:160px;border-radius:16px;"></div>
+      <div class="skeleton" style="height:160px;border-radius:16px;"></div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+  import { renderSidebar, applyTheme, requireAuth } from '../scripts/sidebar.js';
+  import { api } from '../scripts/api.js';
+  import { showToast, timeAgo, difficultyBadge, confirm, downloadBlob, setLoading } from '../scripts/utils.js';
+  import { redirectTo, pageUrl } from '../scripts/routes.js';
+
+  applyTheme();
+  if (!requireAuth()) throw new Error();
+  renderSidebar('history');
+
+  let allNotes = [];
+  let allTests = [];
+  let currentFilter = 'all';
+  let searchQuery = '';
+
+  async function loadHistory() {
+    try {
+      [allNotes, allTests] = await Promise.all([api.listNotes(), api.listTests()]);
+      render();
+    } catch (err) {
+      showToast('Failed to load history: ' + err.message, 'error');
+    }
+  }
+
+  function render() {
+    const grid = document.getElementById('history-grid');
+    let items = [];
+
+    if (currentFilter === 'all' || currentFilter === 'notes') {
+      items.push(...allNotes.map(n => ({ ...n, _type: 'note' })));
+    }
+    if (currentFilter === 'all' || currentFilter === 'tests') {
+      items.push(...allTests.map(t => ({ ...t, _type: 'test' })));
+    }
+    if (currentFilter === 'bookmarked') {
+      items = allNotes.filter(n => n.is_bookmarked).map(n => ({ ...n, _type: 'note' }));
+    }
+
+    // Search filter
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter(i =>
+        (i.title || i.topic || i.subject || '').toLowerCase().includes(q)
+      );
+    }
+
+    // Sort by date newest first
+    items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    if (!items.length) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1;">
+          <div class="empty-icon">H</div>
+          <h3>Nothing here yet</h3>
+          <p>Start by <a href="k7pR2n.html">generating some notes!</a></p>
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = items.map(item => {
+      if (item._type === 'note') return renderNoteCard(item);
+      return renderTestCard(item);
+    }).join('');
+
+    // Attach events
+    grid.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleAction(btn.dataset.action, btn.dataset.id, btn.dataset.type);
+      });
+    });
+  }
+
+  function renderNoteCard(n) {
+    return `
+      <div class="history-card" onclick="window.location.href='${pageUrl('notes')}?id=${n.id}'">
+        <div class="hc-top">
+          <div class="hc-icon" style="background:rgba(212,135,74,0.15);"><span style="font-family:var(--font-sans);font-weight:800;color:var(--primary-light);">N</span></div>
+          <div style="flex:1;min-width:0;">
+            <div class="hc-title">${n.title || n.topic}</div>
+            <div class="hc-meta">${timeAgo(n.created_at)}</div>
+          </div>
+          ${n.is_bookmarked ? '<span style="font-size:1rem;">*</span>' : ''}
+        </div>
+        <div class="hc-tags">
+          <span class="badge badge-primary">Note</span>
+        </div>
+        <div class="hc-actions">
+          <button class="btn btn-secondary btn-sm" style="flex:1;"
+            data-action="open-note" data-id="${n.id}">
+            Open
+          </button>
+          <button class="btn btn-ghost btn-sm"
+            data-action="bookmark" data-id="${n.id}" data-type="note"
+            title="${n.is_bookmarked ? 'Remove Bookmark' : 'Bookmark'}">
+            *
+          </button>
+          <button class="btn btn-ghost btn-sm"
+            data-action="export-note" data-id="${n.id}" title="Export PDF">
+            E
+          </button>
+          <button class="btn btn-danger btn-sm"
+            data-action="delete-note" data-id="${n.id}" title="Delete">
+            X
+          </button>
+        </div>
+      </div>`;
+  }
+
+  function renderTestCard(t) {
+    return `
+      <div class="history-card" onclick="window.location.href='${pageUrl('test')}?id=${t.id}'">
+        <div class="hc-top">
+          <div class="hc-icon" style="background:rgba(212,74,106,0.15);"><span style="font-family:var(--font-sans);font-weight:800;color:var(--accent);">T</span></div>
+          <div style="flex:1;min-width:0;">
+            <div class="hc-title">${t.subject}</div>
+            <div class="hc-meta">${timeAgo(t.created_at)} · ${t.total_questions} questions</div>
+          </div>
+        </div>
+        <div class="hc-tags">
+          ${difficultyBadge(t.difficulty)}
+          ${t.completed
+            ? `<span class="badge badge-success">${t.accuracy}% accuracy</span>`
+            : `<span class="badge badge-warning">In progress</span>`}
+        </div>
+        <div class="hc-actions">
+          <button class="btn btn-secondary btn-sm" style="flex:1;"
+            data-action="open-test" data-id="${t.id}">
+            Open
+          </button>
+          <button class="btn btn-ghost btn-sm"
+            data-action="export-test" data-id="${t.id}" title="Export PDF">
+            E
+          </button>
+          <button class="btn btn-danger btn-sm"
+            data-action="delete-test" data-id="${t.id}" title="Delete">
+            X
+          </button>
+        </div>
+      </div>`;
+  }
+
+  async function handleAction(action, id, type) {
+    switch (action) {
+      case 'open-note':
+        window.location.href = pageUrl('notes') + '?id=' + id; break;
+
+      case 'open-test':
+        window.location.href = pageUrl('test') + '?id=' + id; break;
+
+      case 'bookmark': {
+        try {
+          await api.toggleBookmark(id);
+          const n = allNotes.find(n => n.id === id);
+          if (n) n.is_bookmarked = !n.is_bookmarked;
+          render();
+          showToast('Bookmark updated.', 'info');
+        } catch(e) { showToast(e.message, 'error'); }
+        break;
+      }
+
+      case 'export-note': {
+        try {
+          showToast('Generating PDF…', 'info');
+          const blob = await api.exportNotePdf(id);
+          downloadBlob(blob, `note_${id}.pdf`);
+          showToast('PDF downloaded!', 'success');
+        } catch(e) { showToast('Export failed: ' + e.message, 'error'); }
+        break;
+      }
+
+      case 'export-test': {
+        try {
+          showToast('Generating PDF…', 'info');
+          const blob = await api.exportTestPdf(id, false);
+          downloadBlob(blob, `test_${id}.pdf`);
+          showToast('PDF downloaded!', 'success');
+        } catch(e) { showToast('Export failed: ' + e.message, 'error'); }
+        break;
+      }
+
+      case 'delete-note': {
+        if (!await confirm('Delete this note permanently?')) return;
+        try {
+          await api.deleteNote(id);
+          allNotes = allNotes.filter(n => n.id !== id);
+          render();
+          showToast('Note deleted.', 'info');
+        } catch(e) { showToast(e.message, 'error'); }
+        break;
+      }
+
+      case 'delete-test': {
+        if (!await confirm('Delete this test permanently?')) return;
+        try {
+          await api.deleteTest(id);
+          allTests = allTests.filter(t => t.id !== id);
+          render();
+          showToast('Test deleted.', 'info');
+        } catch(e) { showToast(e.message, 'error'); }
+        break;
+      }
+    }
+  }
+
+  // Filter Tabs
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentFilter = tab.dataset.type;
+      render();
+    });
+  });
+
+  // Search
+  let searchTimer;
+  document.getElementById('search-input').addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchQuery = e.target.value.trim();
+      render();
+    }, 250);
+  });
+
+  loadHistory();
+</script>
+</body>
+</html>

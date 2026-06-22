@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyBuddy — AI-Powered Learning Platform</title>
+  <meta name="description" content="StudyBuddy helps you generate structured study notes, create custom tests, and track your learning with the power of AI."/>
+  <link rel="stylesheet" href="/frontend/styles/main.css"/>
+  <style>
+    body { overflow-x: hidden; }
+
+    /* Landing Nav */
+    .landing-nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(14,12,21,0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    [data-theme="light"] .landing-nav { background: rgba(245,240,232,0.85); }
+
+    .nav-logo { display: flex; align-items: center; gap: 10px; font-size: 1.2rem; font-weight: 800; }
+    .nav-logo .logo-img { height: 34px; width: auto; }
+    .nav-logo span {
+      background: linear-gradient(135deg, var(--primary-light), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .theme-btn-text {
+      font-family: var(--font-sans);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    /* Hero */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(212,135,74,0.25) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(212,74,106,0.12) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 40% at 20% 60%, rgba(86,180,168,0.08) 0%, transparent 50%);
+      z-index: 0;
+    }
+
+    .hero-content { position: relative; z-index: 1; max-width: 720px; }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(212,135,74,0.15);
+      border: 1px solid rgba(212,135,74,0.3);
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--primary-light);
+      margin-bottom: 1.5rem;
+      animation: fadeIn 0.5s ease;
+      font-family: var(--font-sans);
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      line-height: 1.12;
+      margin-bottom: 1.25rem;
+      animation: fadeIn 0.6s 0.1s ease both;
+      letter-spacing: -0.03em;
+    }
+
+    .hero h1 .gradient-text {
+      background: linear-gradient(135deg, var(--primary-light), var(--accent), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-family: var(--font-serif);
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--text-secondary);
+      max-width: 540px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+      animation: fadeIn 0.6s 0.2s ease both;
+    }
+
+    .hero-actions {
+      display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+      animation: fadeIn 0.6s 0.3s ease both;
+    }
+
+    .btn-google {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: #fff;
+      color: #333;
+      border: none;
+      padding: 0.8rem 1.75rem;
+      border-radius: var(--radius-md);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition);
+      text-decoration: none;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      font-family: var(--font-sans);
+    }
+    .btn-google:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+    .btn-google img { width: 20px; height: 20px; }
+
+    /* Warm floating orbs */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.2;
+      pointer-events: none;
+      animation: float 8s ease-in-out infinite;
+    }
+    .orb-1 { width: 400px; height: 400px; background: var(--primary); top: -100px; left: -100px; animation-delay: 0s; }
+    .orb-2 { width: 300px; height: 300px; background: var(--accent); bottom: -80px; right: -60px; animation-delay: 3s; }
+    .orb-3 { width: 200px; height: 200px; background: var(--secondary); top: 50%; left: 60%; animation-delay: 6s; }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50%       { transform: translate(20px, -20px) scale(1.05); }
+    }
+
+    /* Features */
+    .features { padding: 5rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .features-header { text-align: center; margin-bottom: 3rem; }
+    .features-header h2 { margin-bottom: 0.75rem; }
+    .features-header p { font-family: var(--font-serif); color: var(--text-muted); }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 2rem;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(212,135,74,0.05), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .feature-card:hover { transform: translateY(-4px); border-color: var(--primary); box-shadow: var(--shadow-glow); }
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-icon {
+      width: 48px; height: 48px;
+      border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--primary-light);
+      margin-bottom: 1rem;
+      background: rgba(212,135,74,0.12);
+      font-family: var(--font-sans);
+    }
+    .feature-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .feature-card p  { font-family: var(--font-serif); font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; }
+
+    /* Steps */
+    .how-it-works { padding: 5rem 2rem; background: var(--bg-surface); }
+    .how-inner { max-width: 900px; margin: 0 auto; text-align: center; }
+    .how-inner h2 { margin-bottom: 0.75rem; }
+    .how-inner > p { font-family: var(--font-serif); color: var(--text-muted); margin-bottom: 3rem; }
+
+    .steps { display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap; }
+    .step {
+      flex: 1; min-width: 180px; max-width: 220px;
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      gap: 0.75rem; position: relative;
+    }
+    .step:not(:last-child)::after {
+      content: '\2192';
+      position: absolute;
+      right: -1.2rem; top: 1.4rem;
+      font-size: 1.2rem;
+      color: var(--primary);
+      opacity: 0.5;
+    }
+    @media (max-width: 600px) { .step::after { display: none; } }
+
+    .step-num {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; font-weight: 800; color: white;
+      box-shadow: 0 4px 15px rgba(212,135,74,0.4);
+      font-family: var(--font-sans);
+    }
+    .step h3 { font-size: 1rem; }
+    .step p   { font-family: var(--font-serif); font-size: 0.82rem; color: var(--text-muted); }
+
+    /* CTA Banner */
+    .cta-banner { padding: 5rem 2rem; text-align: center; }
+    .cta-inner {
+      max-width: 600px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, rgba(212,135,74,0.2), rgba(212,74,106,0.1));
+      border: 1px solid rgba(212,135,74,0.3);
+      border-radius: var(--radius-xl);
+      padding: 3rem 2rem;
+    }
+    .cta-inner h2 { margin-bottom: 0.75rem; }
+    .cta-inner p  { font-family: var(--font-serif); color: var(--text-muted); margin-bottom: 2rem; }
+    .cta-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: var(--primary-light);
+      font-weight: 800;
+      font-family: var(--font-sans);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-family: var(--font-serif);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="landing-nav">
+  <div class="nav-logo">
+    <img src="/frontend/assets/logo.png" alt="StudyBuddy" class="logo-img">
+    <span>StudyBuddy</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:1rem;">
+    <button onclick="toggleTheme()" class="btn btn-ghost btn-sm" id="theme-btn">
+      <span class="theme-btn-text">Light</span>
+    </button>
+    <a href="/auth/google/login" class="btn btn-primary btn-sm">Sign in</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-bg">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-badge">AI-Powered Learning</div>
+    <h1>
+      Study Smarter.<br>
+      <span class="gradient-text">Learn Faster.</span>
+    </h1>
+    <p>
+      StudyBuddy uses advanced AI to generate personalized study notes,
+      custom tests, and deep insights — tailored exactly to your level.
+    </p>
+    <div class="hero-actions">
+      <a href="/auth/google/login" class="btn-google" id="google-login-btn">
+        <img src="https://www.google.com/favicon.ico" alt="Google"/>
+        Continue with Google
+      </a>
+      <a href="#features" class="btn btn-secondary btn-lg">See Features &darr;</a>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+  <div class="features-header">
+    <div class="hero-badge" style="margin-bottom:1rem;">Everything you need</div>
+    <h2>Built for serious learners</h2>
+    <p>From notes to tests to analytics — all in one platform.</p>
+  </div>
+  <div class="grid-3" style="gap:1.5rem;">
+    <div class="feature-card">
+      <div class="feature-icon">N</div>
+      <h3>AI Study Notes</h3>
+      <p>Generate structured, in-depth notes on any topic — with examples, formulas, and summaries.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(212,74,106,0.12);color:var(--accent);">T</div>
+      <h3>Custom Tests</h3>
+      <p>Build MCQ, short answer, long answer, and programming tests with configurable difficulty.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(86,180,168,0.12);color:var(--secondary);">P</div>
+      <h3>Smart Personalization</h3>
+      <p>Notes and tests adapt to your grade level, stream, and subjects automatically.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(212,160,64,0.12);color:var(--warning);">A</div>
+      <h3>Analytics Dashboard</h3>
+      <p>Track accuracy trends, identify weak areas, and see your learning journey at a glance.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(212,135,74,0.12);color:var(--primary-light);">E</div>
+      <h3>PDF Export</h3>
+      <p>Export any note or test as a professionally formatted PDF — ready to print or share.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon" style="background:rgba(212,74,106,0.12);color:var(--accent);">H</div>
+      <h3>History &amp; Bookmarks</h3>
+      <p>Revisit any note or test from your history. Bookmark favourites for quick access.</p>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section class="how-it-works">
+  <div class="how-inner">
+    <div class="hero-badge" style="margin-bottom:1rem;">Simple as 1-2-3</div>
+    <h2>How StudyBuddy Works</h2>
+    <p>Get started in under a minute.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Sign In</h3>
+        <p>Login with your Google account — no passwords needed.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Set Your Profile</h3>
+        <p>Tell us your grade, stream, and subjects for personalized content.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Generate Notes</h3>
+        <p>Enter any topic and get structured AI notes in seconds.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Test Yourself</h3>
+        <p>Generate a custom test and track your performance over time.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-banner">
+  <div class="cta-inner">
+    <div class="cta-icon">~</div>
+    <h2>Ready to ace your studies?</h2>
+    <p>Join thousands of students using AI to learn smarter every day.</p>
+    <a href="/auth/google/login" class="btn-google">
+      <img src="https://www.google.com/favicon.ico" alt="Google"/>
+      Get Started Free
+    </a>
+  </div>
+</section>
+
+<footer>
+  <p>&copy; 2025 StudyBuddy. Built with care and AI.</p>
+</footer>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+  // Apply saved theme
+  const saved = localStorage.getItem('sb_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+
+  function toggleTheme() {
+    const html = document.documentElement;
+    const isLight = html.getAttribute('data-theme') === 'light';
+    html.setAttribute('data-theme', isLight ? 'dark' : 'light');
+    localStorage.setItem('sb_theme', isLight ? 'dark' : 'light');
+    document.getElementById('theme-btn').innerHTML =
+      '<span class="theme-btn-text">' + (isLight ? 'Light' : 'Dark') + '</span>';
+  }
+
+  document.getElementById('theme-btn').innerHTML =
+    '<span class="theme-btn-text">' + (saved === 'light' ? 'Dark' : 'Light') + '</span>';
+
+  // If already logged in, go to dashboard
+  if (localStorage.getItem('sb_token')) {
+    window.location.href = '/frontend/pages/a8xQ3m.html';
+  }
+</script>
+</body>
+</html>

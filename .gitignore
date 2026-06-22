@@ -1,0 +1,6 @@
+.env
+__pycache__/
+*.pyc
+studybuddy.db
+test_gcc.py
+test_judge0.py

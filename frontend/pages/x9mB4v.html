@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyBuddy — Tests</title>
+  <link rel="stylesheet" href="../styles/main.css"/>
+  <style>
+    .test-layout { display:grid; grid-template-columns:300px 1fr; gap:1.5rem; }
+    @media (max-width:900px) { .test-layout { grid-template-columns:1fr; } }
+
+    /* Test Paper */
+    .test-paper {
+      background:var(--bg-card);
+      border:1px solid var(--border);
+      border-radius:var(--radius-lg);
+      padding:2rem;
+      min-height:600px;
+    }
+
+    .test-header-bar {
+      background:linear-gradient(135deg,rgba(212,135,74,0.15),rgba(212,74,106,0.08));
+      border:1px solid rgba(212,135,74,0.25);
+      border-radius:var(--radius-lg);
+      padding:1.5rem;
+      margin-bottom:1.5rem;
+    }
+
+    .test-meta { display:flex; gap:1rem; flex-wrap:wrap; margin-top:0.75rem; }
+    .test-meta-item { font-size:0.8rem; color:var(--text-muted); }
+
+    /* Sections */
+    .section-block { margin-bottom:2rem; }
+    .section-title {
+      font-size:1rem; font-weight:700;
+      padding:0.6rem 1rem;
+      background:var(--bg-elevated);
+      border-radius:var(--radius-md);
+      margin-bottom:1rem;
+      border-left:3px solid var(--primary);
+    }
+
+    .question-block {
+      padding:1rem;
+      border:1px solid var(--border);
+      border-radius:var(--radius-md);
+      margin-bottom:0.75rem;
+      background:var(--bg-elevated);
+      transition:var(--transition);
+    }
+    .question-block:hover { border-color:rgba(212,135,74,0.3); }
+
+    .qb-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:0.75rem; }
+    .qb-num {
+      background:var(--primary);
+      color:white;
+      font-size:0.78rem;
+      font-weight:700;
+      width:24px; height:24px;
+      border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      flex-shrink:0;
+    }
+    .qb-text { flex:1; font-size:0.9rem; font-weight:600; }
+    .qb-marks {
+      font-size:0.75rem;
+      color:var(--primary-light);
+      font-weight:700;
+      white-space:nowrap;
+    }
+
+    .mcq-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:0.5rem; }
+    @media (max-width:600px) { .mcq-grid { grid-template-columns:1fr; } }
+
+    .mcq-choice {
+      padding:8px 12px;
+      border:1px solid var(--border);
+      border-radius:var(--radius-sm);
+      font-size:0.85rem;
+      cursor:pointer;
+      transition:var(--transition);
+      background:var(--bg-card);
+      text-align:left;
+      width:100%;
+    }
+    .mcq-choice:hover { border-color:var(--primary); background:rgba(212,135,74,0.08); }
+    .mcq-choice.selected { border-color:var(--primary); background:rgba(212,135,74,0.15); }
+    .mcq-choice.correct  { border-color:var(--accent);  background:rgba(86,180,168,0.15); color:var(--accent); }
+    .mcq-choice.wrong    { border-color:var(--danger);  background:rgba(201,75,50,0.12); color:var(--danger); }
+
+    .answer-reveal {
+      margin-top:0.5rem;
+      background:rgba(86,180,168,0.07);
+      border-left:3px solid var(--accent);
+      padding:0.75rem;
+      border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+      font-size:0.85rem;
+      color:var(--text-secondary);
+      display:none;
+    }
+    .answer-reveal.show { display:block; animation:fadeIn 0.2s ease; }
+
+    .reveal-btn {
+      background:none;
+      border:1px solid rgba(212,135,74,0.3);
+      border-radius:var(--radius-sm);
+      color:var(--primary-light);
+      font-size:0.78rem;
+      padding:3px 10px;
+      cursor:pointer;
+      transition:var(--transition);
+      margin-top:0.5rem;
+    }
+    .reveal-btn:hover { background:rgba(212,135,74,0.12); }
+
+    /* Score Banner */
+    .score-banner {
+      background:linear-gradient(135deg,rgba(86,180,168,0.15),rgba(212,135,74,0.15));
+      border:1px solid rgba(86,180,168,0.3);
+      border-radius:var(--radius-lg);
+      padding:1.5rem;
+      text-align:center;
+      margin-bottom:1.5rem;
+    }
+    .score-num { font-size:3rem; font-weight:900; color:var(--accent); }
+    .score-sub { color:var(--text-muted); font-size:0.9rem; }
+
+    /* History List */
+    .test-hist-item {
+      padding:0.75rem;
+      border:1px solid var(--border);
+      border-radius:var(--radius-md);
+      cursor:pointer;
+      transition:var(--transition);
+      margin-bottom:0.5rem;
+    }
+    .test-hist-item:hover { border-color:var(--primary); background:var(--bg-elevated); }
+    .test-hist-item.active { border-color:var(--primary); background:rgba(212,135,74,0.1); }
+    .test-hist-item h4 { font-size:0.88rem; font-weight:600; margin-bottom:2px; }
+    .test-hist-item p  { font-size:0.75rem; color:var(--text-muted); }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-placeholder"></div>
+
+  <main class="main-content fade-in">
+    <div class="page-header">
+      <div>
+        <h1>Tests</h1>
+        <p>AI-generated tests to challenge and track your learning</p>
+      </div>
+      <a href="k7pR2n.html" class="btn btn-primary">Create from Notes</a>
+    </div>
+
+    <div class="test-layout">
+      <!-- Left: Past Tests -->
+      <div>
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;">
+          <h3 style="font-size:0.9rem;font-weight:700;margin-bottom:1rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Past Tests</h3>
+          <div id="test-history-list">
+            <div class="skeleton" style="height:72px;border-radius:10px;margin-bottom:8px;"></div>
+            <div class="skeleton" style="height:72px;border-radius:10px;margin-bottom:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Test Viewer -->
+      <div class="test-paper" id="test-paper">
+        <div class="empty-state" id="test-empty">
+          <div class="empty-icon" style="font-family:var(--font-sans);font-weight:800;color:var(--accent);font-size:2rem;">T</div>
+          <h3>No test selected</h3>
+          <p>Generate a test from your <a href="k7pR2n.html">Study Notes</a>, or select a past test from the list.</p>
+        </div>
+
+        <div id="test-loading" class="hidden" style="text-align:center;padding:4rem 2rem;">
+          <div class="spinner" style="width:48px;height:48px;border-width:4px;margin:0 auto 1rem;"></div>
+          <h3>Loading test…</h3>
+        </div>
+
+        <div id="test-content" class="hidden"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+  import { renderSidebar, applyTheme, requireAuth } from '../scripts/sidebar.js';
+  import { api } from '../scripts/api.js';
+  import { showToast, setLoading, difficultyBadge, timeAgo, downloadBlob, confirm, renderMarkdown, escapeHtml } from '../scripts/utils.js';
+
+  applyTheme();
+  if (!requireAuth()) throw new Error();
+  renderSidebar('test');
+
+  let allTests = [];
+  let currentTest = null;
+  let mcqResults = {};   // { sectionIdx_qIdx: { selected, correct } }
+
+  // ── Load Past Tests ────────────────────────────────────────────────────────
+  async function loadTestHistory() {
+    try {
+      allTests = await api.listTests();
+      renderTestHistory();
+    } catch { /* silent */ }
+  }
+
+  function renderTestHistory() {
+    const container = document.getElementById('test-history-list');
+    if (!allTests.length) {
+      container.innerHTML = `<p class="text-muted text-sm">No tests yet. Generate from Notes!</p>`;
+      return;
+    }
+    container.innerHTML = allTests.map(t => `
+      <div class="test-hist-item ${t.id === currentTest?.id ? 'active' : ''}" data-id="${t.id}">
+        <h4>${t.subject}</h4>
+        <p>
+          ${difficultyBadge(t.difficulty)} &nbsp;
+          ${t.completed ? `${t.accuracy}%` : 'In progress'} &nbsp;
+          · ${t.total_questions}Qs · ${timeAgo(t.created_at)}
+        </p>
+      </div>
+    `).join('');
+    container.querySelectorAll('.test-hist-item').forEach(el => {
+      el.addEventListener('click', () => loadTest(el.dataset.id));
+    });
+  }
+
+  // ── Load Test ──────────────────────────────────────────────────────────────
+  async function loadTest(id) {
+    showState('loading');
+    try {
+      currentTest = await api.getTest(id);
+      mcqResults = {};
+      renderTest(currentTest);
+      showState('content');
+      renderTestHistory();
+    } catch (err) {
+      showToast('Failed to load test: ' + err.message, 'error');
+      showState('empty');
+    }
+  }
+
+  // ── Render Test ────────────────────────────────────────────────────────────
+  function renderTest(test) {
+    const content = document.getElementById('test-content');
+    const totalMarks = test.sections.reduce((acc, sec) =>
+      acc + sec.questions.reduce((a, q) => a + (q.marks || 1), 0), 0);
+
+    let html = `
+      <div class="test-header-bar">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+          <div>
+            <h2 style="margin-bottom:0.25rem;">${test.subject} — Test Paper</h2>
+            <div class="test-meta">
+              <span class="test-meta-item">${difficultyBadge(test.difficulty)}</span>
+              <span class="test-meta-item">${test.total_questions} Questions</span>
+              <span class="test-meta-item">${totalMarks} Marks</span>
+              <span class="test-meta-item">${new Date(test.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <button id="export-test-btn" class="btn btn-secondary btn-sm">Export PDF</button>
+            <button id="export-ans-btn" class="btn btn-ghost btn-sm">With Answers</button>
+            <button id="delete-test-btn" class="btn btn-danger btn-sm">Delete</button>
+          </div>
+        </div>
+        ${test.completed ? `
+          <div class="score-banner" style="margin-top:1rem;">
+            <div class="score-num">${test.accuracy}%</div>
+            <div class="score-sub">MCQ Score: ${test.mcq_score} / ${test.mcq_total} correct</div>
+          </div>` : ''}
+      </div>`;
+
+    // Sections
+    test.sections.forEach((sec, si) => {
+      html += `<div class="section-block">
+        <div class="section-title">Section ${sec.section_number}: ${sec.title}</div>`;
+      sec.questions.forEach((q, qi) => {
+        html += buildTestQuestion(q, qi, si, sec.question_type);
+      });
+      html += `</div>`;
+    });
+
+    // Score Button (only for MCQ-containing tests that aren't completed)
+    const hasMcq = test.sections.some(s => s.question_type === 'mcq');
+    if (hasMcq && !test.completed) {
+      html += `<div style="text-align:center;margin-top:1.5rem;">
+        <button id="submit-score-btn" class="btn btn-primary btn-lg">Submit Score</button>
+      </div>`;
+    }
+
+    content.innerHTML = html;
+
+    // Events
+    document.getElementById('export-test-btn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('export-test-btn');
+      setLoading(btn, true, 'Exporting…');
+      try {
+        const blob = await api.exportTestPdf(test.id, false);
+        downloadBlob(blob, `${test.subject}_test.pdf`);
+        showToast('PDF downloaded!', 'success');
+      } catch(e) { showToast(e.message, 'error'); }
+      finally { setLoading(btn, false, 'Export PDF'); }
+    });
+
+    document.getElementById('export-ans-btn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('export-ans-btn');
+      setLoading(btn, true, 'Exporting…');
+      try {
+        const blob = await api.exportTestPdf(test.id, true);
+        downloadBlob(blob, `${test.subject}_test_answers.pdf`);
+        showToast('PDF with answers downloaded!', 'success');
+      } catch(e) { showToast(e.message, 'error'); }
+      finally { setLoading(btn, false, 'With Answers'); }
+    });
+
+    document.getElementById('delete-test-btn')?.addEventListener('click', async () => {
+      if (!await confirm('This will permanently delete this test.')) return;
+      try {
+        await api.deleteTest(test.id);
+        allTests = allTests.filter(t => t.id !== test.id);
+        renderTestHistory();
+        showState('empty');
+        currentTest = null;
+        showToast('Test deleted.', 'info');
+      } catch(e) { showToast(e.message, 'error'); }
+    });
+
+    document.getElementById('submit-score-btn')?.addEventListener('click', submitScore);
+
+    // MCQ & Reveal
+    attachTestEvents();
+  }
+
+  function buildTestQuestion(q, qi, si, qtype) {
+    const isAnswered = mcqResults[`${si}_${qi}`];
+    let optHtml = '';
+    if (q.options) {
+      optHtml = `<div class="mcq-grid" id="opts-${si}-${qi}">
+        ${q.options.map((opt, oi) => {
+          let cls = 'mcq-choice';
+          if (isAnswered) {
+            if (opt === q.answer) cls += ' correct';
+            else if (isAnswered.selected === opt && opt !== q.answer) cls += ' wrong';
+          }
+          return `<button class="mcq-choice" data-si="${si}" data-qi="${qi}" data-opt="${opt}" data-correct="${opt === q.answer}">${opt}</button>`;
+        }).join('')}
+      </div>`;
+    }
+
+    let progHtml = '';
+    if (qtype === 'programming') {
+      const defaultStarter = q.language === 'python' ? '# Write your python code here\n# Read from sys.stdin, print to stdout\n' : '#include <stdio.h>\n\nint main() {\n    // Read from stdin, print to stdout\n    return 0;\n}';
+      const starterCode = escapeHtml(q.starter_code || defaultStarter);
+      progHtml = `
+        <div style="margin-top:1rem;">
+          <textarea id="code-${si}-${qi}" class="form-textarea" style="font-family:var(--font-mono);background:var(--bg-base);color:#e8e4db;border-color:var(--primary-dark);min-height:150px;padding:1rem;" placeholder="Write your full ${q.language || 'code'} program here...">${starterCode}</textarea>
+          <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+            <button class="btn btn-primary btn-sm run-code-btn" data-si="${si}" data-qi="${qi}">Run Tests</button>
+          </div>
+          <div id="test-results-${si}-${qi}" style="margin-top:0.5rem; font-size:0.85rem; padding: 0.5rem; border-radius: var(--radius-sm); background: var(--bg-card); display: none;"></div>
+        </div>
+      `;
+    }
+
+    const revealBtn = (qtype !== 'mcq')
+      ? `<button class="reveal-btn" data-ri="${si}-${qi}">Show Answer</button>`
+      : '';
+
+    let ansHtml = q.answer;
+    if (qtype === 'programming') {
+      ansHtml = renderMarkdown(q.answer);
+    }
+
+    return `
+      <div class="question-block">
+        <div class="qb-header">
+          <div class="qb-num">${qi + 1}</div>
+          <div class="qb-text" style="white-space:pre-wrap;">${q.question}</div>
+          <span class="qb-marks">[${q.marks || 1} mark${(q.marks || 1) > 1 ? 's' : ''}]</span>
+        </div>
+        ${optHtml}
+        ${progHtml}
+        ${revealBtn}
+        <div class="answer-reveal" id="reveal-${si}-${qi}">
+          <strong>Answer:</strong>
+          <div class="markdown-body" style="margin-top:0.5rem;">${ansHtml}</div>
+          ${q.explanation ? `<br><em style="color:var(--text-muted);font-size:0.82rem;">${q.explanation}</em>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function attachTestEvents() {
+    // MCQ clicks
+    document.querySelectorAll('.mcq-choice').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const si = btn.dataset.si;
+        const qi = btn.dataset.qi;
+        const opt = btn.dataset.opt;
+        const correct = btn.dataset.correct === 'true';
+
+        // Mark all in group
+        document.querySelectorAll(`.mcq-choice[data-si="${si}"][data-qi="${qi}"]`).forEach(b => {
+          b.classList.remove('correct','wrong','selected');
+          if (b.dataset.correct === 'true') b.classList.add('correct');
+        });
+        if (!correct) btn.classList.add('wrong');
+
+        mcqResults[`${si}_${qi}`] = { selected: opt, correct };
+
+        // Auto-reveal
+        document.getElementById(`reveal-${si}-${qi}`).classList.add('show');
+      });
+    });
+
+    // Reveal buttons
+    document.querySelectorAll('.reveal-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const ri = btn.dataset.ri;
+        const block = document.getElementById(`reveal-${ri}`);
+        const showing = block.classList.toggle('show');
+        btn.textContent = showing ? 'Hide Answer' : 'Show Answer';
+      });
+    });
+
+    // Run code buttons
+    document.querySelectorAll('.run-code-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const si = parseInt(btn.dataset.si);
+        const qi = parseInt(btn.dataset.qi);
+        const q = currentTest.sections[si].questions[qi];
+        const code = document.getElementById(`code-${si}-${qi}`).value;
+        const resDiv = document.getElementById(`test-results-${si}-${qi}`);
+        
+        if (!code.trim()) {
+          showToast('Please write some code first!', 'warning');
+          return;
+        }
+        
+        setLoading(btn, true, 'Running...');
+        resDiv.style.display = 'block';
+        resDiv.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;vertical-align:middle;margin-right:8px;"></span> <em>Running tests...</em>';
+        
+        try {
+          const testCases = q.test_cases || [];
+          if (testCases.length === 0) {
+            resDiv.innerHTML = '<span style="color:var(--warning);">No test cases defined by AI for this question.</span>';
+            return;
+          }
+          
+          let passed = 0;
+          let resultsHtml = '';
+          
+          for (let i = 0; i < testCases.length; i++) {
+            const tc = testCases[i];
+            const resp = await fetch('/execute/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                language: (q.language || 'c').toLowerCase(),
+                code: code,
+                stdin: String(tc.input)
+              })
+            });
+            const data = await resp.json();
+            
+            if (data.message) {
+               throw new Error(data.message);
+            }
+            
+            if (data.compile && data.compile.code !== 0) {
+               resultsHtml = `<div style="color:var(--danger);padding:0.5rem;background:rgba(201,75,50,0.1);border-radius:4px;white-space:pre-wrap;font-family:var(--font-mono);font-size:0.8rem;">Compilation Error:\n${data.compile.output}</div>`;
+               break;
+            }
+            
+            const out = (data.run.stdout || '').trim();
+            const err = (data.run.stderr || '').trim();
+            const exp = String(tc.expected).trim();
+            
+            if (err && !out) {
+               resultsHtml += `<div style="margin-top:4px;">Test ${i+1}: X <span style="color:var(--danger)">Runtime Error</span></div>`;
+            } else if (out === exp) {
+               passed++;
+               resultsHtml += `<div style="margin-top:4px;">Test ${i+1}: OK Passed</div>`;
+            } else {
+               resultsHtml += `<div style="margin-top:4px;">Test ${i+1}: X Failed <br><code style="font-size:0.75rem;color:var(--text-muted)">Exp: ${exp} | Got: ${out}</code></div>`;
+            }
+          }
+          
+          const success = passed === testCases.length;
+          resDiv.innerHTML = `<div style="margin-bottom:0.5rem;font-weight:700;color:var(--${success ? 'success' : 'danger'})">
+            Result: ${passed}/${testCases.length} Test Cases Passed
+          </div>` + resultsHtml;
+          
+        } catch (err) {
+          resDiv.innerHTML = `<span style="color:var(--danger);">Error executing code: ${err.message}</span>`;
+        } finally {
+          setLoading(btn, false, 'Run Tests');
+        }
+      });
+    });
+  }
+
+  async function submitScore() {
+    if (!currentTest) return;
+    const mcqSections = currentTest.sections.filter(s => s.question_type === 'mcq');
+    let total = 0, correct = 0;
+    mcqSections.forEach((sec, si) => {
+      sec.questions.forEach((q, qi) => {
+        total++;
+        if (mcqResults[`${si}_${qi}`]?.correct) correct++;
+      });
+    });
+
+    if (total === 0) { showToast('No MCQs found to score.', 'warning'); return; }
+
+    const btn = document.getElementById('submit-score-btn');
+    setLoading(btn, true, 'Saving…');
+
+    try {
+      await api.submitScore({
+        test_id: currentTest.id,
+        mcq_score: correct,
+        mcq_total: total,
+        wrong_topics: [],
+      });
+      const pct = Math.round((correct/total)*100);
+      showToast(`Score saved! You got ${correct}/${total} (${pct}%)`, 'success');
+      currentTest.completed = true;
+      currentTest.mcq_score = correct;
+      currentTest.mcq_total = total;
+      currentTest.accuracy  = pct;
+      allTests = allTests.map(t => t.id === currentTest.id ? { ...t, completed:true, accuracy:pct } : t);
+      renderTestHistory();
+      renderTest(currentTest);
+      showState('content');
+    } catch(err) {
+      showToast(err.message, 'error');
+      setLoading(btn, false, 'Submit Score');
+    }
+  }
+
+  function showState(state) {
+    document.getElementById('test-empty').classList.toggle('hidden', state !== 'empty');
+    document.getElementById('test-loading').classList.toggle('hidden', state !== 'loading');
+    document.getElementById('test-content').classList.toggle('hidden', state !== 'content');
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  const urlId = new URLSearchParams(window.location.search).get('id');
+  loadTestHistory().then(() => {
+    if (urlId) loadTest(urlId);
+  });
+</script>
+</body>
+</html>

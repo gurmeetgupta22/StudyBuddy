@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyBuddy — Tell Us About Yourself</title>
+  <link rel="stylesheet" href="../styles/main.css"/>
+  <style>
+    body { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:2rem; }
+
+    .survey-wrapper {
+      width: 100%; max-width: 560px;
+    }
+
+    .survey-header { text-align:center; margin-bottom:2.5rem; }
+    .survey-header .step-indicator {
+      display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:1.5rem;
+    }
+    .step-dot {
+      width:10px; height:10px; border-radius:50%;
+      background:var(--bg-elevated); border:2px solid var(--border);
+      transition:var(--transition);
+    }
+    .step-dot.active { background:var(--primary); border-color:var(--primary); box-shadow:0 0 8px var(--primary); }
+    .step-dot.done   { background:var(--accent);  border-color:var(--accent); }
+
+    .survey-card {
+      background:var(--bg-card);
+      border:1px solid var(--border);
+      border-radius:var(--radius-xl);
+      padding:2.5rem 2rem;
+    }
+
+    .survey-step { display:none; animation:fadeIn 0.3s ease; }
+    .survey-step.active { display:block; }
+
+    .occ-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:0.75rem; }
+    .occ-card {
+      border:2px solid var(--border);
+      border-radius:var(--radius-md);
+      padding:1.25rem 0.75rem;
+      text-align:center;
+      cursor:pointer;
+      transition:var(--transition);
+      background:var(--bg-elevated);
+    }
+    .occ-card:hover { border-color:var(--primary); background:var(--bg-hover); }
+    .occ-card.selected { border-color:var(--primary); background:rgba(212,135,74,0.15); }
+    .occ-card .occ-icon { font-size:2rem; margin-bottom:0.5rem; }
+    .occ-card span { font-size:0.85rem; font-weight:600; }
+
+    .subjects-input {
+      display:flex; gap:0.5rem; margin-bottom:0.5rem;
+    }
+
+    .subject-tag {
+      display:inline-flex; align-items:center; gap:4px;
+      background:rgba(212,135,74,0.15); border:1px solid rgba(212,135,74,0.3);
+      border-radius:999px; padding:4px 10px;
+      font-size:0.8rem; color:var(--primary-light);
+    }
+    .subject-tag button {
+      background:none; border:none; cursor:pointer;
+      color:var(--primary-light); font-size:0.75rem; line-height:1; padding:0;
+    }
+  </style>
+</head>
+<body>
+<div class="survey-wrapper fade-in">
+  <div class="survey-header">
+    <h2>Personalize Your Learning</h2>
+    <p style="color:var(--text-muted);">Help us tailor AI content to your level</p>
+    <div class="step-indicator" style="margin-top:1rem;">
+      <div class="step-dot active" id="dot-0"></div>
+      <div class="step-dot" id="dot-1"></div>
+      <div class="step-dot" id="dot-2"></div>
+    </div>
+  </div>
+
+  <div class="survey-card">
+    <!-- Step 0: Name & Age -->
+    <div class="survey-step active" id="step-0">
+      <h3 style="margin-bottom:1.5rem;">Basic Info</h3>
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label class="form-label">Your Age *</label>
+        <input type="number" id="age-input" class="form-input" placeholder="e.g. 17" min="5" max="100"/>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="goStep(1)">Next →</button>
+    </div>
+
+    <!-- Step 1: Occupation -->
+    <div class="survey-step" id="step-1">
+      <h3 style="margin-bottom:1.5rem;">What describes you?</h3>
+      <div class="occ-grid" id="occ-grid">
+        <div class="occ-card" data-occ="school" onclick="selectOcc(this)">
+          <div class="occ-icon" style="font-family:var(--font-sans);font-weight:800;color:var(--primary-light);">S</div>
+          <span>School Student</span>
+        </div>
+        <div class="occ-card" data-occ="college" onclick="selectOcc(this)">
+          <div class="occ-icon" style="font-family:var(--font-sans);font-weight:800;color:var(--accent);">C</div>
+          <span>College Student</span>
+        </div>
+        <div class="occ-card" data-occ="other" onclick="selectOcc(this)">
+          <div class="occ-icon" style="font-family:var(--font-sans);font-weight:800;color:var(--secondary);">P</div>
+          <span>Professional</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
+        <button class="btn btn-secondary" onclick="goStep(0)">← Back</button>
+        <button class="btn btn-primary" style="flex:1" onclick="goStep(2)">Next →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Details -->
+    <div class="survey-step" id="step-2">
+      <h3 style="margin-bottom:1.5rem;">A bit more detail</h3>
+
+      <!-- School -->
+      <div id="school-fields" class="hidden">
+        <div class="form-group">
+          <label class="form-label">Grade (6 – 12) *</label>
+          <select id="grade-select" class="form-select">
+            <option value="">Select your grade</option>
+            <option value="6">Grade 6</option><option value="7">Grade 7</option>
+            <option value="8">Grade 8</option><option value="9">Grade 9</option>
+            <option value="10">Grade 10</option><option value="11">Grade 11</option>
+            <option value="12">Grade 12</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- College -->
+      <div id="college-fields" class="hidden">
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label class="form-label">Stream / Major *</label>
+          <input type="text" id="stream-input" class="form-input" placeholder="e.g. Computer Science, Commerce…"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subjects (press Enter to add)</label>
+          <div class="subjects-input">
+            <input type="text" id="subject-input" class="form-input" placeholder="e.g. Data Structures"/>
+            <button class="btn btn-secondary" onclick="addSubject()">Add</button>
+          </div>
+          <div id="subjects-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+        </div>
+      </div>
+
+      <!-- Other -->
+      <div id="other-fields" class="hidden">
+        <div class="form-group">
+          <label class="form-label">Your Occupation *</label>
+          <input type="text" id="custom-occ-input" class="form-input" placeholder="e.g. Software Engineer, Doctor…"/>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
+        <button class="btn btn-secondary" onclick="goStep(1)">← Back</button>
+        <button class="btn btn-primary" id="submit-btn" style="flex:1" onclick="submitSurvey()">
+          Complete Setup
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+  import { api } from '../scripts/api.js';
+  import { showToast, setLoading } from '../scripts/utils.js';
+  import { redirectTo } from '../scripts/routes.js';
+
+  // Guard
+  if (!localStorage.getItem('sb_token')) redirectTo('index');
+
+  // Apply theme
+  const theme = localStorage.getItem('sb_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+
+  let selectedOcc = null;
+  let subjects = [];
+
+  window.goStep = function(n) {
+    // Validate step 0
+    if (n === 1) {
+      const age = parseInt(document.getElementById('age-input').value);
+      if (!age || age < 5 || age > 100) {
+        showToast('Please enter a valid age.', 'warning'); return;
+      }
+    }
+    // Validate step 1
+    if (n === 2) {
+      if (!selectedOcc) { showToast('Please select your occupation type.', 'warning'); return; }
+      showDetailsForOcc(selectedOcc);
+    }
+
+    document.querySelectorAll('.survey-step').forEach((s, i) => {
+      s.classList.toggle('active', i === n);
+    });
+    // Update dots
+    document.querySelectorAll('.step-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === n);
+      d.classList.toggle('done', i < n);
+    });
+  };
+
+  window.selectOcc = function(el) {
+    document.querySelectorAll('.occ-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedOcc = el.dataset.occ;
+  };
+
+  function showDetailsForOcc(occ) {
+    ['school-fields','college-fields','other-fields'].forEach(id => {
+      document.getElementById(id).classList.add('hidden');
+    });
+    if (occ === 'school')  document.getElementById('school-fields').classList.remove('hidden');
+    if (occ === 'college') document.getElementById('college-fields').classList.remove('hidden');
+    if (occ === 'other')   document.getElementById('other-fields').classList.remove('hidden');
+  }
+
+  window.addSubject = function() {
+    const inp = document.getElementById('subject-input');
+    const val = inp.value.trim();
+    if (!val || subjects.includes(val)) return;
+    subjects.push(val);
+    inp.value = '';
+    renderTags();
+  };
+
+  document.getElementById('subject-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); window.addSubject(); }
+  });
+
+  function renderTags() {
+    const container = document.getElementById('subjects-tags');
+    container.innerHTML = subjects.map((s, i) =>
+      `<div class="subject-tag">${s}<button onclick="removeSubject(${i})">X</button></div>`
+    ).join('');
+  }
+
+  window.removeSubject = function(i) {
+    subjects.splice(i, 1); renderTags();
+  };
+
+  window.submitSurvey = async function() {
+    const age = parseInt(document.getElementById('age-input').value);
+    const btn = document.getElementById('submit-btn');
+    const payload = { age, occupation: selectedOcc };
+
+    if (selectedOcc === 'school') {
+      const grade = parseInt(document.getElementById('grade-select').value);
+      if (!grade) { showToast('Please select your grade.', 'warning'); return; }
+      payload.grade = grade;
+    } else if (selectedOcc === 'college') {
+      const stream = document.getElementById('stream-input').value.trim();
+      if (!stream) { showToast('Please enter your stream/major.', 'warning'); return; }
+      payload.stream = stream;
+      payload.subjects = subjects;
+    } else {
+      const custom = document.getElementById('custom-occ-input').value.trim();
+      if (!custom) { showToast('Please describe your occupation.', 'warning'); return; }
+      payload.custom_occupation = custom;
+    }
+
+    setLoading(btn, true, 'Saving…');
+    try {
+      await api.submitSurvey(payload);
+      showToast('Profile saved! Welcome to StudyBuddy', 'success');
+      setTimeout(() => redirectTo('dashboard'), 1200);
+    } catch (err) {
+      showToast(err.message, 'error');
+      setLoading(btn, false, 'Complete Setup');
+    }
+  };
+</script>
+</body>
+</html>

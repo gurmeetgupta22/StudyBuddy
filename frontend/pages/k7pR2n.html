@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyBuddy — Study Notes</title>
+  <link rel="stylesheet" href="../styles/main.css"/>
+  <style>
+    .notes-layout { display:grid; grid-template-columns:320px 1fr; gap:1.5rem; align-items:start; }
+    @media (max-width:900px) { .notes-layout { grid-template-columns:1fr; } }
+
+    /* Left Panel */
+    .notes-panel {
+      background:var(--bg-card);
+      border:1px solid var(--border);
+      border-radius:var(--radius-lg);
+      padding:1.5rem;
+      position:sticky; top:1rem;
+    }
+
+    .topic-input-wrap { position:relative; }
+    .topic-input-wrap textarea {
+      padding-right:3rem;
+      min-height:90px;
+    }
+    .voice-btn {
+      position:absolute; right:0.75rem; bottom:0.75rem;
+      background:none; border:none; font-size:1.2rem;
+      cursor:pointer; color:var(--text-muted);
+      transition:var(--transition);
+    }
+    .voice-btn:hover { color:var(--primary); }
+    .voice-btn.recording { color:var(--danger); animation:pulse 1s infinite; }
+
+    /* Note Viewer */
+    .note-viewer {
+      background:var(--bg-card);
+      border:1px solid var(--border);
+      border-radius:var(--radius-lg);
+      padding:2rem;
+      min-height:500px;
+      position:relative;
+    }
+
+    .note-toolbar {
+      display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;
+      margin-bottom:1.5rem; padding-bottom:1rem;
+      border-bottom:1px solid var(--border);
+    }
+
+    /* Questions Section */
+    .questions-section { margin-top:2rem; }
+    .question-card {
+      background:var(--bg-elevated);
+      border:1px solid var(--border);
+      border-radius:var(--radius-md);
+      padding:1rem 1.25rem;
+      margin-bottom:0.75rem;
+    }
+    .question-card .q-header {
+      display:flex; align-items:flex-start; justify-content:space-between; gap:0.75rem;
+    }
+    .question-text { font-size:0.9rem; font-weight:600; flex:1; }
+    .toggle-answer-btn {
+      flex-shrink:0;
+      background:rgba(212,135,74,0.12);
+      border:1px solid rgba(212,135,74,0.25);
+      border-radius:var(--radius-sm);
+      color:var(--primary-light);
+      font-size:0.78rem;
+      padding:3px 8px;
+      cursor:pointer;
+      transition:var(--transition);
+      white-space:nowrap;
+    }
+    .toggle-answer-btn:hover { background:rgba(212,135,74,0.22); }
+
+    .answer-block {
+      margin-top:0.75rem;
+      padding:0.75rem;
+      background:rgba(86,180,168,0.07);
+      border-left:3px solid var(--accent);
+      border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+      font-size:0.85rem;
+      color:var(--text-secondary);
+      display:none;
+    }
+    .answer-block.visible { display:block; animation:fadeIn 0.2s ease; }
+
+    .mcq-options { margin-top:0.5rem; display:flex; flex-direction:column; gap:4px; }
+    .mcq-option {
+      padding:6px 10px;
+      border-radius:var(--radius-sm);
+      border:1px solid var(--border);
+      font-size:0.83rem;
+      cursor:pointer;
+      transition:var(--transition);
+      background:var(--bg-card);
+    }
+    .mcq-option:hover { border-color:var(--primary); }
+    .mcq-option.correct { background:rgba(86,180,168,0.15); border-color:var(--accent); color:var(--accent); }
+    .mcq-option.wrong   { background:rgba(255,77,109,0.12); border-color:var(--danger);  color:var(--danger); }
+
+    /* History Sidebar List */
+    .history-item {
+      padding:0.65rem 0.75rem;
+      border-radius:var(--radius-sm);
+      cursor:pointer;
+      transition:var(--transition);
+      border:1px solid transparent;
+      font-size:0.85rem;
+      display:flex; align-items:center; gap:6px;
+    }
+    .history-item:hover { background:var(--bg-hover); border-color:var(--border); }
+    .history-item.active { background:rgba(212,135,74,0.15); border-color:var(--primary); color:var(--primary-light); }
+    .history-item .hi-title { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-placeholder"></div>
+
+  <main class="main-content fade-in">
+    <div class="page-header">
+      <div>
+        <h1>Study Notes</h1>
+        <p>Generate AI-powered structured notes on any topic</p>
+      </div>
+    </div>
+
+    <div class="notes-layout">
+      <!-- Left: Controls + History -->
+      <div>
+        <div class="notes-panel">
+          <div class="form-group" style="margin-bottom:1rem;">
+            <label class="form-label">Topic / Prompt</label>
+            <div class="topic-input-wrap">
+              <textarea id="topic-input" class="form-textarea"
+                placeholder="e.g. Photosynthesis, Newton's Laws, Linked Lists…"></textarea>
+              <button class="voice-btn" id="voice-btn" title="Voice input">V</button>
+            </div>
+          </div>
+          <button id="generate-btn" class="btn btn-primary btn-full">
+            Generate Notes
+          </button>
+        </div>
+
+        <!-- Notes History -->
+        <div style="margin-top:1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+            <span style="font-size:0.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;">Past Notes</span>
+            <button id="refresh-history" class="btn btn-ghost btn-sm">R</button>
+          </div>
+          <div id="notes-history" style="display:flex;flex-direction:column;gap:2px;">
+            <div class="skeleton" style="height:40px;border-radius:8px;"></div>
+            <div class="skeleton" style="height:40px;border-radius:8px;"></div>
+            <div class="skeleton" style="height:40px;border-radius:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Note Viewer -->
+      <div class="note-viewer" id="note-viewer">
+        <!-- Empty State -->
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon" style="font-family:var(--font-sans);font-weight:800;color:var(--primary-light);font-size:2rem;">N</div>
+          <h3>Ready to learn?</h3>
+          <p>Enter a topic on the left and click <strong>Generate Notes</strong> to get started.</p>
+        </div>
+
+        <!-- Loading State (hidden) -->
+        <div id="gen-loading" class="hidden" style="text-align:center;padding:4rem 2rem;">
+          <div class="spinner" style="width:48px;height:48px;border-width:4px;margin:0 auto 1rem;"></div>
+          <h3>Generating notes…</h3>
+          <p class="text-muted">AI is crafting your personalised study material</p>
+        </div>
+
+        <!-- Note Content (hidden until loaded) -->
+        <div id="note-content" class="hidden">
+          <div class="note-toolbar" id="note-toolbar"></div>
+          <div class="markdown-body" id="note-body"></div>
+          <div class="questions-section hidden" id="questions-section">
+            <div class="divider"></div>
+            <h2 style="margin-bottom:1rem;">Practice Questions</h2>
+            <div id="questions-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Test Generation Modal -->
+    <div class="modal-overlay" id="test-modal">
+      <div class="modal" style="max-width:560px;">
+        <div class="modal-header">
+          <h3>Generate Test</h3>
+          <button class="modal-close" onclick="closeTestModal()">X</button>
+        </div>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label class="form-label">Subject *</label>
+          <input type="text" id="test-subject" class="form-input" placeholder="e.g. Physics, Mathematics"/>
+        </div>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label class="form-label">Difficulty</label>
+          <select id="test-difficulty" class="form-select">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+        <div style="margin-bottom:1rem;">
+          <label class="form-label" style="display:block;margin-bottom:0.5rem;">Sections</label>
+          <div id="sections-config">
+            <div class="section-row" style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem;">
+              <select class="form-select section-type" style="flex:1;">
+                <option value="mcq">MCQ</option>
+                <option value="short">Short Answer</option>
+                <option value="medium">Medium Answer</option>
+                <option value="long">Long Answer</option>
+                <option value="programming">Programming</option>
+              </select>
+              <input type="number" class="form-input section-count" style="width:70px;" value="5" min="1" max="20"/>
+              <span style="color:var(--text-muted);font-size:0.8rem;">Qs</span>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:0.25rem;" onclick="addSection()">+ Add Section</button>
+        </div>
+        <button id="gen-test-btn" class="btn btn-primary btn-full">
+          Generate Test
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+  import { renderSidebar, applyTheme, requireAuth } from '../scripts/sidebar.js';
+  import { api } from '../scripts/api.js';
+  import { showToast, setLoading, renderMarkdown, downloadBlob, timeAgo, confirm } from '../scripts/utils.js';
+  import { redirectTo, pageUrl } from '../scripts/routes.js';
+
+  applyTheme();
+  if (!requireAuth()) throw new Error();
+  renderSidebar('notes');
+
+  let currentNoteId = null;
+  let allNotes = [];
+
+  // ── Voice Input ────────────────────────────────────────────────────────────
+  const voiceBtn = document.getElementById('voice-btn');
+  let recognition = null;
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (e) => {
+      document.getElementById('topic-input').value = e.results[0][0].transcript;
+      voiceBtn.classList.remove('recording');
+    };
+    recognition.onend = () => voiceBtn.classList.remove('recording');
+    voiceBtn.addEventListener('click', () => {
+      if (voiceBtn.classList.contains('recording')) {
+        recognition.stop();
+      } else {
+        recognition.start();
+        voiceBtn.classList.add('recording');
+      }
+    });
+  } else {
+    voiceBtn.style.display = 'none';
+  }
+
+  // ── Load History ──────────────────────────────────────────────────────────
+  async function loadHistory() {
+    try {
+      allNotes = await api.listNotes();
+      renderHistory(allNotes);
+    } catch { /* silent */ }
+  }
+
+  function renderHistory(notes) {
+    const container = document.getElementById('notes-history');
+    if (!notes.length) {
+      container.innerHTML = `<p class="text-muted text-sm" style="padding:0.5rem;">No notes yet.</p>`;
+      return;
+    }
+    container.innerHTML = notes.map(n => `
+      <div class="history-item ${n.id === currentNoteId ? 'active' : ''}" data-id="${n.id}">
+        <span style="font-size:0.9rem;">${n.is_bookmarked ? '*' : 'N'}</span>
+        <span class="hi-title">${n.title || n.topic}</span>
+        <span style="font-size:0.7rem;color:var(--text-muted);">${timeAgo(n.created_at)}</span>
+      </div>
+    `).join('');
+    container.querySelectorAll('.history-item').forEach(el => {
+      el.addEventListener('click', () => loadNote(el.dataset.id));
+    });
+  }
+
+  document.getElementById('refresh-history').addEventListener('click', loadHistory);
+
+  // ── Generate Notes ────────────────────────────────────────────────────────
+  document.getElementById('generate-btn').addEventListener('click', async () => {
+    const topic = document.getElementById('topic-input').value.trim();
+    if (!topic) { showToast('Please enter a topic.', 'warning'); return; }
+
+    const btn = document.getElementById('generate-btn');
+    setLoading(btn, true, 'Generating…');
+    showState('loading');
+
+    try {
+      const note = await api.generateNote(topic);
+      currentNoteId = note.id;
+      allNotes.unshift({ id: note.id, title: note.title, topic: note.topic, is_bookmarked: false, created_at: note.created_at });
+      renderHistory(allNotes);
+      displayNote(note);
+      showState('content');
+      showToast('Notes generated successfully!', 'success');
+    } catch (err) {
+      showToast('Generation failed: ' + err.message, 'error');
+      showState('empty');
+    } finally {
+      setLoading(btn, false, 'Generate Notes');
+    }
+  });
+
+  // ── Load Existing Note ────────────────────────────────────────────────────
+  async function loadNote(id) {
+    currentNoteId = id;
+    showState('loading');
+    renderHistory(allNotes); // re-render to highlight
+    try {
+      const note = await api.getNote(id);
+      displayNote(note);
+      showState('content');
+    } catch (err) {
+      showToast('Failed to load note.', 'error');
+      showState('empty');
+    }
+  }
+
+  // ── Display Note ──────────────────────────────────────────────────────────
+  function displayNote(note) {
+    // Toolbar
+    const toolbar = document.getElementById('note-toolbar');
+    toolbar.innerHTML = `
+      <div style="flex:1;">
+        <h2 style="font-size:1.2rem;margin-bottom:0;">${note.title || note.topic}</h2>
+        <div style="font-size:0.78rem;color:var(--text-muted);">
+          ${(note.tags || []).map(t => `<span class="chip">${t}</span>`).join(' ')}
+        </div>
+      </div>
+      <button id="bookmark-btn" class="btn btn-ghost btn-sm" title="Bookmark">
+        ${note.is_bookmarked ? '*' : '*'} Bookmark
+      </button>
+      <button class="btn btn-secondary btn-sm" id="export-pdf-btn">
+        Export PDF
+      </button>
+      <button class="btn btn-primary btn-sm" id="gen-test-trigger">
+        Generate Test
+      </button>
+      <button class="btn btn-danger btn-sm" id="delete-note-btn">X</button>
+    `;
+
+    // Markdown body
+    document.getElementById('note-body').innerHTML = renderMarkdown(note.content);
+
+    // Questions
+    const qs = note.questions || [];
+    const qSection = document.getElementById('questions-section');
+    if (qs.length) {
+      qSection.classList.remove('hidden');
+      document.getElementById('questions-list').innerHTML = qs.map((q, i) => buildQuestionCard(q, i)).join('');
+      attachQuestionEvents();
+    } else {
+      qSection.classList.add('hidden');
+    }
+
+    // Toolbar events
+    document.getElementById('bookmark-btn').addEventListener('click', async () => {
+      try {
+        await api.toggleBookmark(note.id);
+        note.is_bookmarked = !note.is_bookmarked;
+        const idx = allNotes.findIndex(n => n.id === note.id);
+        if (idx >= 0) allNotes[idx].is_bookmarked = note.is_bookmarked;
+        displayNote(note);
+        showToast(note.is_bookmarked ? 'Bookmarked!' : 'Removed from bookmarks', 'info');
+      } catch (e) { showToast(e.message, 'error'); }
+    });
+
+    document.getElementById('export-pdf-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('export-pdf-btn');
+      setLoading(btn, true, 'Exporting…');
+      try {
+        const blob = await api.exportNotePdf(note.id);
+        downloadBlob(blob, `${note.title || note.topic}.pdf`);
+        showToast('PDF downloaded!', 'success');
+      } catch (e) { showToast('Export failed: ' + e.message, 'error'); }
+      finally { setLoading(btn, false, 'Export PDF'); }
+    });
+
+    document.getElementById('gen-test-trigger').addEventListener('click', () => {
+      document.getElementById('test-subject').value = note.topic;
+      openTestModal();
+    });
+
+    document.getElementById('delete-note-btn').addEventListener('click', async () => {
+      if (!await confirm('This will permanently delete this note.')) return;
+      try {
+        await api.deleteNote(note.id);
+        showToast('Note deleted.', 'info');
+        allNotes = allNotes.filter(n => n.id !== note.id);
+        renderHistory(allNotes);
+        showState('empty');
+        currentNoteId = null;
+      } catch (e) { showToast(e.message, 'error'); }
+    });
+  }
+
+  // ── Question Cards ─────────────────────────────────────────────────────────
+  function buildQuestionCard(q, i) {
+    const type = q.type?.toUpperCase() || 'Q';
+    const typeColors = { MCQ:'primary', SHORT:'success', LONG:'warning', PROGRAMMING:'danger' };
+    const badgeClass = typeColors[type] || 'primary';
+
+    let optionsHtml = '';
+    if (q.options?.length) {
+      optionsHtml = `<div class="mcq-options" id="opts-${i}">
+        ${q.options.map((opt, oi) => `
+          <div class="mcq-option" data-idx="${i}" data-opt="${oi}" data-correct="${opt === q.answer}">
+            ${opt}
+          </div>`).join('')}
+      </div>`;
+    }
+
+    return `
+      <div class="question-card">
+        <div class="q-header">
+          <span class="badge badge-${badgeClass}" style="flex-shrink:0;">${type}</span>
+          <span class="question-text">&nbsp;${i+1}. ${q.question}</span>
+          <button class="toggle-answer-btn" data-qi="${i}">Show Answer</button>
+        </div>
+        ${optionsHtml}
+        <div class="answer-block" id="answer-${i}">
+          <strong>Answer:</strong> ${q.answer}
+          ${q.explanation ? `<br><em style="color:var(--text-muted);">${q.explanation}</em>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function attachQuestionEvents() {
+    // Toggle answers
+    document.querySelectorAll('.toggle-answer-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const i = btn.dataset.qi;
+        const block = document.getElementById(`answer-${i}`);
+        const visible = block.classList.toggle('visible');
+        btn.textContent = visible ? 'Hide Answer' : 'Show Answer';
+      });
+    });
+
+    // MCQ option click
+    document.querySelectorAll('.mcq-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const i = opt.dataset.idx;
+        const isCorrect = opt.dataset.correct === 'true';
+        document.querySelectorAll(`.mcq-option[data-idx="${i}"]`).forEach(o => {
+          o.classList.remove('correct', 'wrong');
+        });
+        opt.classList.add(isCorrect ? 'correct' : 'wrong');
+        if (!isCorrect) {
+          document.querySelectorAll(`.mcq-option[data-idx="${i}"]`).forEach(o => {
+            if (o.dataset.correct === 'true') o.classList.add('correct');
+          });
+        }
+        // Auto-show answer
+        document.getElementById(`answer-${i}`).classList.add('visible');
+        const toggleBtn = document.querySelector(`.toggle-answer-btn[data-qi="${i}"]`);
+        if (toggleBtn) toggleBtn.textContent = 'Hide Answer';
+      });
+    });
+  }
+
+  // ── View State ────────────────────────────────────────────────────────────
+  function showState(state) {
+    document.getElementById('empty-state').classList.toggle('hidden', state !== 'empty');
+    document.getElementById('gen-loading').classList.toggle('hidden', state !== 'loading');
+    document.getElementById('note-content').classList.toggle('hidden', state !== 'content');
+  }
+
+  // ── Test Modal ────────────────────────────────────────────────────────────
+  window.openTestModal = function() {
+    document.getElementById('test-modal').classList.add('open');
+  };
+  window.closeTestModal = function() {
+    document.getElementById('test-modal').classList.remove('open');
+  };
+
+  window.addSection = function() {
+    const container = document.getElementById('sections-config');
+    const row = document.createElement('div');
+    row.className = 'section-row';
+    row.style = 'display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem;';
+    row.innerHTML = `
+      <select class="form-select section-type" style="flex:1;">
+        <option value="mcq">MCQ</option>
+        <option value="short">Short Answer</option>
+        <option value="medium">Medium Answer</option>
+        <option value="long">Long Answer</option>
+        <option value="programming">Programming</option>
+      </select>
+      <input type="number" class="form-input section-count" style="width:70px;" value="3" min="1" max="20"/>
+      <span style="color:var(--text-muted);font-size:0.8rem;">Qs</span>
+      <button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">X</button>
+    `;
+    container.appendChild(row);
+  };
+
+  document.getElementById('gen-test-btn').addEventListener('click', async () => {
+    if (!currentNoteId) { showToast('Please open a note first.', 'warning'); return; }
+    const subject = document.getElementById('test-subject').value.trim();
+    if (!subject) { showToast('Please enter a subject.', 'warning'); return; }
+
+    const sections = [...document.querySelectorAll('.section-row')].map(row => ({
+      question_type: row.querySelector('.section-type').value,
+      count: parseInt(row.querySelector('.section-count').value) || 5,
+    }));
+
+    const btn = document.getElementById('gen-test-btn');
+    setLoading(btn, true, 'Generating…');
+
+    try {
+      const test = await api.generateTest({
+        note_id: currentNoteId,
+        subject,
+        difficulty: document.getElementById('test-difficulty').value,
+        sections,
+      });
+      closeTestModal();
+      showToast('Test generated! Redirecting…', 'success');
+      setTimeout(() => window.location.href = pageUrl('test') + '?id=' + test.id, 1000);
+    } catch (err) {
+      showToast('Test generation failed: ' + err.message, 'error');
+      setLoading(btn, false, 'Generate Test');
+    }
+  });
+
+  // ── URL param: open note directly ─────────────────────────────────────────
+  const urlParams = new URLSearchParams(window.location.search);
+  const noteId = urlParams.get('id');
+
+  loadHistory().then(() => {
+    if (noteId) loadNote(noteId);
+  });
+</script>
+</body>
+</html>

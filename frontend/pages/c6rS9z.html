@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StudyBuddy — Analytics</title>
+  <link rel="stylesheet" href="../styles/main.css"/>
+  <style>
+    .analytics-grid { display:grid; grid-template-columns:2fr 1fr; gap:1.5rem; }
+    @media (max-width:900px) { .analytics-grid { grid-template-columns:1fr; } }
+
+    /* Chart Container */
+    .chart-card {
+      background:var(--bg-card);
+      border:1px solid var(--border);
+      border-radius:var(--radius-lg);
+      padding:1.5rem;
+    }
+    .chart-title { font-size:0.95rem; font-weight:700; margin-bottom:1.25rem; }
+
+    /* Bar Chart */
+    .bar-chart { display:flex; align-items:flex-end; gap:8px; height:180px; }
+    .bar-wrap  { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end; }
+    .bar {
+      width:100%;
+      border-radius:var(--radius-sm) var(--radius-sm) 0 0;
+      background:linear-gradient(180deg, var(--primary), var(--primary-dark));
+      transition:height 0.6s cubic-bezier(0.34,1.56,0.64,1);
+      min-height:4px;
+      cursor:pointer;
+      position:relative;
+    }
+    .bar:hover { filter:brightness(1.2); }
+    .bar-tooltip {
+      position:absolute; top:-32px; left:50%; transform:translateX(-50%);
+      background:var(--bg-elevated);
+      border:1px solid var(--border);
+      border-radius:6px;
+      padding:3px 8px;
+      font-size:0.72rem;
+      font-weight:700;
+      white-space:nowrap;
+      opacity:0; pointer-events:none;
+      transition:opacity 0.15s;
+      z-index:10;
+    }
+    .bar:hover .bar-tooltip { opacity:1; }
+    .bar-label { font-size:0.68rem; color:var(--text-muted); text-align:center; }
+
+    /* Donut Chart (CSS) */
+    .donut-wrap { display:flex; flex-direction:column; align-items:center; gap:1rem; }
+    .donut {
+      position:relative;
+      width:140px; height:140px;
+    }
+    .donut-svg { transform:rotate(-90deg); }
+    .donut-bg { fill:none; stroke:var(--bg-elevated); stroke-width:14; }
+    .donut-fg { fill:none; stroke-width:14; stroke-linecap:round; transition:stroke-dashoffset 1s ease; }
+    .donut-label {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      font-weight:800; font-size:1.4rem;
+    }
+    .donut-label small { font-size:0.65rem; font-weight:500; color:var(--text-muted); }
+
+    /* Weak Areas */
+    .weak-area-item {
+      display:flex; align-items:center; gap:0.75rem;
+      padding:0.65rem 0.9rem;
+      border-radius:var(--radius-md);
+      background:rgba(255,77,109,0.08);
+      border:1px solid rgba(255,77,109,0.2);
+      margin-bottom:0.5rem;
+      font-size:0.85rem;
+      font-weight:600;
+      color:var(--danger);
+    }
+
+    /* Recent Topics */
+    .topic-item {
+      display:flex; align-items:center; gap:0.75rem;
+      padding:0.6rem 0;
+      border-bottom:1px solid var(--border);
+      font-size:0.88rem;
+    }
+    .topic-item:last-child { border-bottom:none; }
+    .topic-num {
+      width:24px; height:24px; border-radius:50%;
+      background:rgba(212,135,74,0.15);
+      display:flex; align-items:center; justify-content:center;
+      font-size:0.72rem; font-weight:700; color:var(--primary-light);
+      flex-shrink:0;
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-placeholder"></div>
+
+  <main class="main-content fade-in">
+    <div class="page-header">
+      <div>
+        <h1>Analytics</h1>
+        <p>Track your learning performance and progress</p>
+      </div>
+      <button onclick="loadAnalytics()" class="btn btn-secondary btn-sm">Refresh</button>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="grid-4" style="margin-bottom:2rem;" id="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(212,135,74,0.15);color:var(--primary-light);font-family:var(--font-sans);font-weight:800;">N</div>
+        <div class="stat-info">
+          <div class="stat-value" id="s-notes">—</div>
+          <div class="stat-label">Total Notes</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(212,74,106,0.15);color:var(--accent);font-family:var(--font-sans);font-weight:800;">T</div>
+        <div class="stat-info">
+          <div class="stat-value" id="s-tests">—</div>
+          <div class="stat-label">Tests Taken</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(86,180,168,0.15);color:var(--secondary);font-family:var(--font-sans);font-weight:800;">C</div>
+        <div class="stat-info">
+          <div class="stat-value" id="s-completed">—</div>
+          <div class="stat-label">Completed</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(212,160,64,0.15);color:var(--warning);font-family:var(--font-sans);font-weight:800;">B</div>
+        <div class="stat-info">
+          <div class="stat-value" id="s-bookmarks">—</div>
+          <div class="stat-label">Bookmarked</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="analytics-grid">
+      <!-- Left Column -->
+      <div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+        <!-- Accuracy Bar Chart -->
+        <div class="chart-card">
+          <div class="chart-title">Accuracy Trend (Last 10 Tests)</div>
+          <div class="bar-chart" id="bar-chart">
+            <p class="text-muted" style="margin:auto;">No test data yet.</p>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:0.5rem;">
+            <span class="text-muted text-xs">Older</span>
+            <span class="text-muted text-xs">Newer</span>
+          </div>
+        </div>
+
+        <!-- Recent Topics -->
+        <div class="chart-card">
+          <div class="chart-title">Recently Studied Topics</div>
+          <div id="recent-topics">
+            <div class="skeleton" style="height:36px;border-radius:8px;margin-bottom:6px;"></div>
+            <div class="skeleton" style="height:36px;border-radius:8px;margin-bottom:6px;"></div>
+            <div class="skeleton" style="height:36px;border-radius:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column -->
+      <div style="display:flex;flex-direction:column;gap:1.5rem;">
+
+        <!-- Accuracy Donut -->
+        <div class="chart-card" style="text-align:center;">
+          <div class="chart-title">Average Accuracy</div>
+          <div class="donut-wrap">
+            <div class="donut">
+              <svg class="donut-svg" viewBox="0 0 100 100" width="140" height="140">
+                <circle class="donut-bg" cx="50" cy="50" r="38"/>
+                <circle class="donut-fg" id="donut-circle" cx="50" cy="50" r="38"
+                  stroke="url(#donut-grad)"
+                  stroke-dasharray="238.76"
+                  stroke-dashoffset="238.76"/>
+                <defs>
+                  <linearGradient id="donut-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#6C63FF"/>
+                    <stop offset="100%" style="stop-color:#43D9B5"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="donut-label">
+                <span id="donut-pct">—</span>
+                <small>accuracy</small>
+              </div>
+            </div>
+            <p id="accuracy-note" class="text-muted text-sm">Complete tests to track accuracy.</p>
+          </div>
+        </div>
+
+        <!-- Weak Areas -->
+        <div class="chart-card">
+          <div class="chart-title">Weak Areas</div>
+          <div id="weak-areas-list">
+            <div class="skeleton" style="height:40px;border-radius:10px;margin-bottom:6px;"></div>
+            <div class="skeleton" style="height:40px;border-radius:10px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast-container"></div>
+
+<script type="module">
+  import { renderSidebar, applyTheme, requireAuth } from '../scripts/sidebar.js';
+  import { api } from '../scripts/api.js';
+  import { showToast } from '../scripts/utils.js';
+
+  applyTheme();
+  if (!requireAuth()) throw new Error();
+  renderSidebar('analytics');
+
+  window.loadAnalytics = async function() {
+    try {
+      const data = await api.getAnalytics();
+
+      // Stats
+      document.getElementById('s-notes').textContent     = data.total_notes;
+      document.getElementById('s-tests').textContent     = data.total_tests;
+      document.getElementById('s-completed').textContent = data.completed_tests;
+      document.getElementById('s-bookmarks').textContent = data.bookmarked_notes;
+
+      // Accuracy Donut
+      const pct = data.average_accuracy;
+      const donutEl = document.getElementById('donut-circle');
+      const circumference = 238.76;
+      if (pct != null) {
+        document.getElementById('donut-pct').textContent = `${pct}%`;
+        document.getElementById('accuracy-note').textContent =
+          pct >= 80 ? 'Excellent performance!' :
+          pct >= 60 ? 'Good, keep it up!' :
+          'Keep studying to improve!';
+        setTimeout(() => {
+          donutEl.style.strokeDashoffset = circumference - (pct / 100) * circumference;
+        }, 100);
+      } else {
+        document.getElementById('donut-pct').textContent = '—';
+      }
+
+      // Bar Chart
+      const trend = data.accuracy_trend;
+      const barChart = document.getElementById('bar-chart');
+      if (trend.length) {
+        const maxVal = Math.max(...trend.map(t => t.accuracy), 1);
+        barChart.innerHTML = trend.map(t => `
+          <div class="bar-wrap">
+            <div class="bar" style="height:${(t.accuracy/maxVal)*100}%">
+              <div class="bar-tooltip">${t.accuracy}% — ${t.subject}</div>
+            </div>
+            <div class="bar-label">${t.date}</div>
+          </div>
+        `).join('');
+      } else {
+        barChart.innerHTML = `<p class="text-muted" style="margin:auto;font-size:0.85rem;">Complete some tests to see your accuracy trend.</p>`;
+      }
+
+      // Recent Topics
+      const topicsEl = document.getElementById('recent-topics');
+      if (data.recent_topics.length) {
+        topicsEl.innerHTML = data.recent_topics.map((t, i) => `
+          <div class="topic-item">
+            <div class="topic-num">${i + 1}</div>
+            <span>${t}</span>
+          </div>`).join('');
+      } else {
+        topicsEl.innerHTML = `<p class="text-muted text-sm">No topics studied yet.</p>`;
+      }
+
+      // Weak Areas
+      const weakEl = document.getElementById('weak-areas-list');
+      if (data.weak_areas.length) {
+        weakEl.innerHTML = data.weak_areas.map(w => `
+          <div class="weak-area-item">${w}</div>`).join('');
+      } else {
+        weakEl.innerHTML = `
+          <div style="text-align:center;padding:1.5rem;">
+            <p class="text-muted text-sm">No weak areas detected yet!</p>
+          </div>`;
+      }
+    } catch (err) {
+      showToast('Failed to load analytics: ' + err.message, 'error');
+    }
+  };
+
+  loadAnalytics();
+</script>
+</body>
+</html>
